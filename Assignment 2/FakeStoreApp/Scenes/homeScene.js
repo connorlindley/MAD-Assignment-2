@@ -1,9 +1,54 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
+
+const BASE_URL = "http://10.0.0.63:3000";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/products/categories`);
+      const data = await response.json();
+      setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const formatText = (text) => {
+    return text
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator
+          size="large"
+          color="#000000"
+          justifyContent="center"
+          alignItems="center"
+          marginTop="50%"
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -12,26 +57,17 @@ export default function HomeScreen() {
         <Text style={styles.categoriesHeaderText}>Categories</Text>
       </View>
 
-      {/* Categories Row */}
+      {/* Dynamic Categories */}
       <View style={styles.categoriesRow}>
-        <TouchableOpacity
-          style={styles.categoryBox}
-          onPress={() => navigation.navigate("Electronic")}
-        >
-          <Text style={styles.categoryText}>Electronics</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.categoryBox}>
-          <Text style={styles.categoryText}>Jewelry</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.categoryBox}>
-          <Text style={styles.categoryText}>Men's Clothing</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.categoryBox}>
-          <Text style={styles.categoryText}>Women's Clothing</Text>
-        </TouchableOpacity>
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category}
+            style={styles.categoryBox}
+            onPress={() => navigation.navigate("ProductListing")}
+          >
+            <Text style={styles.categoryText}>{formatText(category)}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
@@ -54,7 +90,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   categoriesHeaderText: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#ffffff",
   },
@@ -62,14 +98,13 @@ const styles = StyleSheet.create({
   // Row of categories
   categoriesRow: {
     flexDirection: "column",
-    justifyContent: "space-around",
+    justifyContent: "flex-start",
     padding: 20,
     flexWrap: " column",
     borderColor: "#000000",
     borderWidth: 1,
-    margin: 30,
-    borderRadius: 10,
-    height: "75%",
+    margin: 20,
+    height: "80%",
   },
 
   categoryBox: {
@@ -80,6 +115,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: "15%",
     justifyContent: "space-around",
+    marginBottom: 20,
   },
 
   categoryText: {
