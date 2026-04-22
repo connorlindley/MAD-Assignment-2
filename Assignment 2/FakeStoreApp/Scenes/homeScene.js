@@ -63,7 +63,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             key={category}
             style={styles.categoryBox}
-            onPress={() => navigation.navigate("ProductListing")}
+            onPress={() => navigation.navigate("ProductListing", { category })}
           >
             <Text style={styles.categoryText}>{formatText(category)}</Text>
           </TouchableOpacity>
