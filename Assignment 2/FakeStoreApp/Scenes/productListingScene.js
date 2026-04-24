@@ -63,7 +63,13 @@ export default function ProductListingScene({ route }) {
         <View style={styles.categoriesRow}>
           <ScrollView showsVerticalScrollIndicator={false}>
             {products.map((item) => (
-              <View key={item.id} style={styles.card}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.card}
+                onPress={() => {
+                  navigation.navigate("ProductDetails", { id: item.id });
+                }}
+              >
                 <Image
                   source={{ uri: BASE_URL + item.image }}
                   style={styles.image}
@@ -72,7 +78,7 @@ export default function ProductListingScene({ route }) {
                 <Text style={styles.title}>{item.title}</Text>
 
                 <Text style={styles.price}>${item.price}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
@@ -120,7 +126,7 @@ const styles = StyleSheet.create({
   categoriesRow: {
     flex: 1,
     padding: 15,
-    marginBottom: 70,
+    marginBottom: 100,
     marginRight: 20,
     marginLeft: 20,
     borderWidth: 1,
@@ -159,7 +165,7 @@ const styles = StyleSheet.create({
   // Back Button
   backButtonContainer: {
     position: "absolute",
-    bottom: 30,
+    bottom: 50,
     left: 0,
     right: 0,
     alignItems: "center",
