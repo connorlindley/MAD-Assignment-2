@@ -11,12 +11,14 @@ import { useNavigation } from "@react-navigation/native";
 import { ScrollView } from "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useCart } from "../cartContext";
 
 const BASE_URL = "http://10.0.0.63:3000";
 
 export default function ProductDetailsScene({ route }) {
   const navigation = useNavigation();
   const id = route?.params?.id;
+  const { addToCart } = useCart();
 
   const [loading, setLoading] = useState(true);
   const [product, setProductDetails] = useState(null);
@@ -24,6 +26,34 @@ export default function ProductDetailsScene({ route }) {
   useEffect(() => {
     fetchProductDetails();
   }, [id]);
+
+  const handleAddToCart = async () => {
+    addToCart(product);
+    try {
+      const getResponse = await fetch(`${BASE_URL}/cart`);
+      const currentCart = await getResponse.json();
+
+      const existingProducts = currentCart.products ?? [];
+
+      const existingItem = existingProducts.find(
+        (p) => p.productId === product.id,
+      );
+
+      const updatedProducts = existingItem
+        ? existingProducts.map((p) =>
+            p.productId === product.id ? { ...p, quantity: p.quantity + 1 } : p,
+          )
+        : [...existingProducts, { productId: product.id, quantity: 1 }];
+
+      await fetch(`${BASE_URL}/cart`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...currentCart, products: updatedProducts }),
+      });
+    } catch (error) {
+      console.error("Error updating cart:", error);
+    }
+  };
 
   const fetchProductDetails = async () => {
     try {
@@ -80,7 +110,7 @@ export default function ProductDetailsScene({ route }) {
             <Ionicons name="arrow-back" size={20} color="#ffffff" />
             <Text style={styles.buttonText}>Back</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.buttons}>
+          <TouchableOpacity style={styles.buttons} onPress={handleAddToCart}>
             <Ionicons name="cart" size={20} color="#ffffff" />
             <Text style={styles.buttonText}>Add to Cart</Text>
           </TouchableOpacity>
