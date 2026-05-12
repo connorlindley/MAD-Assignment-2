@@ -7,8 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-
-const BASE_URL = "http://10.0.0.63:3000";
+import { BASE_URL } from "../constants";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -100,7 +99,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     justifyContent: "flex-start",
     padding: 20,
-    flexWrap: " column",
+    flexWrap: "nowrap",
     borderColor: "#000000",
     borderWidth: 1,
     margin: 20,

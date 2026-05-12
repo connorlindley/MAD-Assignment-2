@@ -8,13 +8,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { ScrollView } from "react-native-gesture-handler";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ScrollView, GestureHandlerRootView } from "react-native-gesture-handler";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useDispatch } from "react-redux";
 import { addToCart } from "../store/cartSlice";
-
-const BASE_URL = "http://10.0.0.63:3000";
+import { BASE_URL } from "../constants";
 
 export default function ProductDetailsScene({ route }) {
   const navigation = useNavigation();
@@ -29,6 +27,7 @@ export default function ProductDetailsScene({ route }) {
   }, [id]);
 
   const handleAddToCart = async () => {
+    // Dispatch to local Redux store first for instant UI feedback, then sync server
     dispatch(addToCart(product));
     try {
       const getResponse = await fetch(`${BASE_URL}/cart`);
@@ -94,7 +93,7 @@ export default function ProductDetailsScene({ route }) {
           <Text style={styles.title}>{product.title}</Text>
         </View>
         <View style={styles.productDetailsContainer}>
-          <Text style={styles.productDetails}>Price: ${product.price}.00</Text>
+          <Text style={styles.productDetails}>Price: ${product.price.toFixed(2)}</Text>
           <Text style={styles.productDetails}>
             Count: {product.rating?.count}
           </Text>

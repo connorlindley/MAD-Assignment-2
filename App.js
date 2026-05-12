@@ -26,6 +26,7 @@ function HomeStack() {
 }
 
 function AppTabs() {
+  // Derive total item count from Redux to drive the live cart badge
   const totalQuantity = useSelector((state) =>
     state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
   );
@@ -48,6 +49,7 @@ function AppTabs() {
         component={CheckoutScreen}
         options={{
           title: "Shopping Cart",
+          // Hide badge when cart is empty — undefined removes it completely
           tabBarBadge: totalQuantity > 0 ? totalQuantity : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color} />

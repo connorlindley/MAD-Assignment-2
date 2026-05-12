@@ -9,11 +9,11 @@ import {
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { increaseQuantity, decreaseQuantity } from "../store/cartSlice";
-
-const BASE_URL = "http://10.0.0.63:3000";
+import { BASE_URL } from "../constants";
 
 export default function CheckoutScene() {
   const dispatch = useDispatch();
+  // Read cart items from Redux (persisted via AsyncStorage across app restarts)
   const items = useSelector((state) => state.cart.items);
 
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -38,7 +38,7 @@ export default function CheckoutScene() {
         <Text style={styles.summaryText}>Total: ${totalCost.toFixed(2)}</Text>
       </View>
 
-      {/* Product List */}
+      {/* FlatList virtualises the list, keeping memory use low for large carts */}
       <FlatList
         data={items}
         keyExtractor={(item) => String(item.id)}
