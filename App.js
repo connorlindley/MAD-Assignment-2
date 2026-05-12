@@ -3,7 +3,9 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { CartProvider, useCart } from "./cartContext";
+import { Provider, useSelector } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
+import { store, persistor } from "./store/store";
 
 import HomeScreen from "./Scenes/homeScene";
 import ProductListingScreen from "./Scenes/productListingScene";
@@ -13,7 +15,6 @@ import CheckoutScreen from "./Scenes/checkoutScene";
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Your existing stack lives inside the Home tab
 function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -24,29 +25,30 @@ function HomeStack() {
   );
 }
 
-// Separate component so useCart hook works inside NavigationContainer
 function AppTabs() {
-  const { cartItems } = useCart();
+  const totalQuantity = useSelector((state) =>
+    state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
+  );
 
   return (
     <Tab.Navigator>
       <Tab.Screen
-        name="HomeTab"
+        name="ProductsTab"
         component={HomeStack}
         options={{
           headerShown: false,
-          title: "Home",
+          title: "Products",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
       />
       <Tab.Screen
-        name="Checkout"
+        name="ShoppingCart"
         component={CheckoutScreen}
         options={{
-          title: "Checkout",
-          tabBarBadge: cartItems.length > 0 ? cartItems.length : undefined,
+          title: "Shopping Cart",
+          tabBarBadge: totalQuantity > 0 ? totalQuantity : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color} />
           ),
@@ -58,12 +60,14 @@ function AppTabs() {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <CartProvider>
-        <NavigationContainer>
-          <AppTabs />
-        </NavigationContainer>
-      </CartProvider>
-    </GestureHandlerRootView>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <NavigationContainer>
+            <AppTabs />
+          </NavigationContainer>
+        </GestureHandlerRootView>
+      </PersistGate>
+    </Provider>
   );
 }

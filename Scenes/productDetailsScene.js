@@ -11,14 +11,15 @@ import { useNavigation } from "@react-navigation/native";
 import { ScrollView } from "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useCart } from "../cartContext";
+import { useDispatch } from "react-redux";
+import { addToCart } from "../store/cartSlice";
 
 const BASE_URL = "http://10.0.0.63:3000";
 
 export default function ProductDetailsScene({ route }) {
   const navigation = useNavigation();
   const id = route?.params?.id;
-  const { addToCart } = useCart();
+  const dispatch = useDispatch();
 
   const [loading, setLoading] = useState(true);
   const [product, setProductDetails] = useState(null);
@@ -28,7 +29,7 @@ export default function ProductDetailsScene({ route }) {
   }, [id]);
 
   const handleAddToCart = async () => {
-    addToCart(product);
+    dispatch(addToCart(product));
     try {
       const getResponse = await fetch(`${BASE_URL}/cart`);
       const currentCart = await getResponse.json();
