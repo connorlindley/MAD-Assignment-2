@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -11,6 +12,7 @@ import HomeScreen from "./Scenes/homeScene";
 import ProductListingScreen from "./Scenes/productListingScene";
 import ProductDetailsScreen from "./Scenes/productDetailsScene";
 import CheckoutScreen from "./Scenes/checkoutScene";
+import SplashScreen from "./Scenes/splashScene";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -61,6 +63,17 @@ function AppTabs() {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
