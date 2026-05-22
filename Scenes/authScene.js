@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { BASE_URL } from "../constants";
+import { store } from "../store/store";
+import { registerLocalUser } from "../store/sessionSlice";
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -41,6 +43,20 @@ function SignInForm({ onLogin, onSwitchToSignUp }) {
     }
 
     const username = email.trim().split("@")[0];
+
+    // Validate locally first — covers accounts created through the app
+    const localUsers = store.getState().session?.localUsers ?? {};
+    const localUser = localUsers[email.trim()];
+    if (localUser) {
+      if (localUser.password !== password.trim()) {
+        Alert.alert("Sign In Failed", "Invalid email or password. Please try again.");
+        return;
+      }
+      onLogin({ name: localUser.name, email: email.trim(), username });
+      return;
+    }
+
+    // Not a locally registered user — try the server
     setLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/auth/login`, {
@@ -51,7 +67,6 @@ function SignInForm({ onLogin, onSwitchToSignUp }) {
       const data = await response.json();
 
       if (!response.ok) {
-        // Server reachable but credentials rejected — show validation error
         Alert.alert("Sign In Failed", data?.message || "Invalid email or password. Please try again.");
         setLoading(false);
         return;
@@ -59,8 +74,8 @@ function SignInForm({ onLogin, onSwitchToSignUp }) {
 
       onLogin({ name: username, email: email.trim(), username, token: data.token });
     } catch {
-      // Server unreachable — fall back to local auth so the app still works
-      onLogin({ name: username, email: email.trim(), username });
+      // Server unreachable and not locally registered
+      Alert.alert("Sign In Failed", "Invalid email or password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -182,7 +197,8 @@ function SignUpForm({ onLogin, onSwitchToSignIn }) {
         return;
       }
 
-      // Server accepted — use server-assigned ID
+      // Server accepted — save credentials locally and use server-assigned ID
+      store.dispatch(registerLocalUser({ email: email.trim(), password: password.trim(), name: name.trim() }));
       Alert.alert("Welcome!", "Your account has been created.", [
         {
           text: "Continue",
@@ -191,7 +207,8 @@ function SignUpForm({ onLogin, onSwitchToSignIn }) {
         },
       ]);
     } catch {
-      // Server unreachable — create account locally so the app still works
+      // Server unreachable — save credentials locally so sign-in works later
+      store.dispatch(registerLocalUser({ email: email.trim(), password: password.trim(), name: name.trim() }));
       Alert.alert("Welcome!", "Your account has been created.", [
         {
           text: "Continue",
