@@ -16,35 +16,45 @@ const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 // ── Sign In Form ──────────────────────────────────────────────────────────────
 function SignInForm({ onLogin, onSwitchToSignUp }) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const handleClear = () => {
+    setEmail("");
+    setPassword("");
+  };
+
   const handleSignIn = () => {
-    if (!username.trim()) {
-      Alert.alert("Error", "Please enter your username.");
+    if (!email.trim()) {
+      Alert.alert("Error", "Please enter your email.");
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      Alert.alert("Error", "Please enter a valid email address.");
       return;
     }
     if (!password.trim()) {
       Alert.alert("Error", "Please enter your password.");
       return;
     }
-    onLogin({ name: username }, "signin");
+    onLogin({ name: email.trim().split("@")[0], email: email.trim() }, "signin");
   };
 
   return (
     <View style={styles.formContainer}>
       <View style={styles.header}>
-        <Text style={styles.headerText}>Sign In</Text>
+        <Text style={styles.headerText}>Sign in with your email and password</Text>
       </View>
 
       <View style={styles.fields}>
-        <Text style={styles.label}>Username</Text>
+        <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter your username"
-          value={username}
-          onChangeText={setUsername}
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
           autoCapitalize="none"
+          keyboardType="email-address"
         />
 
         <Text style={styles.label}>Password</Text>
@@ -56,9 +66,18 @@ function SignInForm({ onLogin, onSwitchToSignUp }) {
           secureTextEntry
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-          <Text style={styles.buttonText}>Sign In</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.clearButton]}
+            onPress={handleClear}
+          >
+            <Text style={[styles.buttonText, styles.clearButtonText]}>Clear</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.button} onPress={handleSignIn}>
+            <Text style={styles.buttonText}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity onPress={onSwitchToSignUp} style={styles.hintContainer}>
           <Text style={styles.hintText}>

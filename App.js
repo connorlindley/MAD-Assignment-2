@@ -30,7 +30,7 @@ function HomeStack() {
   );
 }
 
-function AppTabs({ isLoggedIn, currentUser, onLogout, initialTab }) {
+function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
   const totalQuantity = useSelector((state) =>
     state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
   );
@@ -83,7 +83,7 @@ function AppTabs({ isLoggedIn, currentUser, onLogout, initialTab }) {
           ),
         }}
       >
-        {() => <ProfileScreen currentUser={currentUser} onLogout={onLogout} />}
+        {() => <ProfileScreen currentUser={currentUser} onLogout={onLogout} onUpdate={onUpdate} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -112,6 +112,10 @@ export default function App() {
     setInitialTab("ProductsTab");
   };
 
+  const handleUpdate = (updatedUser) => {
+    setCurrentUser(updatedUser);
+  };
+
   if (showSplash) {
     return <SplashScreen />;
   }
@@ -129,6 +133,7 @@ export default function App() {
               isLoggedIn={isLoggedIn}
               currentUser={currentUser}
               onLogout={handleLogout}
+              onUpdate={handleUpdate}
               initialTab={initialTab}
             />
           </NavigationContainer>
