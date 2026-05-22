@@ -13,6 +13,7 @@ import HomeScreen from "./Scenes/homeScene";
 import ProductListingScreen from "./Scenes/productListingScene";
 import ProductDetailsScreen from "./Scenes/productDetailsScene";
 import CheckoutScreen from "./Scenes/checkoutScene";
+import OrdersScreen from "./Scenes/ordersScene";
 import SplashScreen from "./Scenes/splashScene";
 import AuthScreen from "./Scenes/authScene";
 import ProfileScreen from "./Scenes/profileScene";
@@ -33,6 +34,9 @@ function HomeStack() {
 function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
   const totalQuantity = useSelector((state) =>
     state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
+  );
+  const newOrderCount = useSelector((state) =>
+    state.orders.orders.filter((o) => o.status === "new").length
   );
 
   const guardedListener = (tabName) => ({
@@ -75,6 +79,18 @@ function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
         }}
       />
       <Tab.Screen
+        name="MyOrders"
+        component={OrdersScreen}
+        listeners={guardedListener("My Orders")}
+        options={{
+          title: "My Orders",
+          tabBarBadge: newOrderCount > 0 ? newOrderCount : undefined,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="receipt-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="ProfileTab"
         options={{
           title: "My Profile",
@@ -83,7 +99,13 @@ function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
           ),
         }}
       >
-        {() => <ProfileScreen currentUser={currentUser} onLogout={onLogout} onUpdate={onUpdate} />}
+        {() => (
+          <ProfileScreen
+            currentUser={currentUser}
+            onLogout={onLogout}
+            onUpdate={onUpdate}
+          />
+        )}
       </Tab.Screen>
     </Tab.Navigator>
   );

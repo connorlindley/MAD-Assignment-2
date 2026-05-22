@@ -6,21 +6,46 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
-import { increaseQuantity, decreaseQuantity } from "../store/cartSlice";
+import { increaseQuantity, decreaseQuantity, clearCart } from "../store/cartSlice";
+import { addOrder } from "../store/ordersSlice";
 import { BASE_URL } from "../constants";
 
 export default function CheckoutScene() {
   const dispatch = useDispatch();
-  // Read cart items from Redux (persisted via AsyncStorage across app restarts)
   const items = useSelector((state) => state.cart.items);
 
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalCost = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  );
+  const totalCost = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const handleCheckout = () => {
+    Alert.alert(
+      "Confirm Order",
+      `Place order for ${totalQuantity} item(s) totalling $${totalCost.toFixed(2)}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Check Out",
+          onPress: () => {
+            dispatch(
+              addOrder({
+                id: `ORD-${Date.now().toString().slice(-6)}`,
+                items: items.map((i) => ({ ...i })),
+                totalQuantity,
+                totalCost,
+                status: "new",
+                createdAt: Date.now(),
+              })
+            );
+            dispatch(clearCart());
+            Alert.alert("Order Placed", "Your order has been created successfully!");
+          },
+        },
+      ]
+    );
+  };
 
   if (items.length === 0) {
     return (
@@ -38,7 +63,6 @@ export default function CheckoutScene() {
         <Text style={styles.summaryText}>Total: ${totalCost.toFixed(2)}</Text>
       </View>
 
-      {/* FlatList virtualises the list, keeping memory use low for large carts */}
       <FlatList
         data={items}
         keyExtractor={(item) => String(item.id)}
@@ -73,6 +97,13 @@ export default function CheckoutScene() {
           </View>
         )}
       />
+
+      {/* Check Out */}
+      <View style={styles.checkoutContainer}>
+        <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
+          <Text style={styles.checkoutButtonText}>Check Out</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -106,7 +137,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 10,
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
   card: {
     flexDirection: "row",
@@ -162,5 +193,21 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     minWidth: 20,
     textAlign: "center",
+  },
+  checkoutContainer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  checkoutButton: {
+    backgroundColor: "#000000",
+    padding: 16,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  checkoutButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
