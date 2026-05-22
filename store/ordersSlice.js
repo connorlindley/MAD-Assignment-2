@@ -12,8 +12,11 @@ const ordersSlice = createSlice({
       const order = state.orders.find((o) => o.id === id);
       if (order) order.status = status;
     },
+    clearOrders: (state) => {
+      state.orders = [];
+    },
   },
 });
 
-export const { addOrder, updateOrderStatus } = ordersSlice.actions;
+export const { addOrder, updateOrderStatus, clearOrders } = ordersSlice.actions;
 export default ordersSlice.reducer;

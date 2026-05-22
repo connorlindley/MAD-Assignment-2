@@ -49,6 +49,7 @@ export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
         });
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
+          setLoading(false);
           Alert.alert("Update Failed", data?.message || "Failed to update profile. Please try again.");
           return;
         }
@@ -57,10 +58,11 @@ export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
       // Server unreachable — update locally and continue
     }
 
+    // Update parent state first, then close modal, then show alert
     onUpdate({ ...currentUser, name: newName.trim() });
+    setLoading(false);
     setModalVisible(false);
     Alert.alert("Success", "Your profile has been updated.");
-    setLoading(false);
   };
 
   const handleCancel = () => {

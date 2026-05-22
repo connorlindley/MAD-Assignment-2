@@ -8,6 +8,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Provider, useSelector } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { store, persistor } from "./store/store";
+import { clearCart } from "./store/cartSlice";
+import { clearOrders } from "./store/ordersSlice";
+import { setUserEmail, setDisplayName, clearSession } from "./store/sessionSlice";
 
 import HomeScreen from "./Scenes/homeScene";
 import ProductListingScreen from "./Scenes/productListingScene";
@@ -136,19 +139,33 @@ function AppContent() {
   }, []);
 
   const handleLogin = (user) => {
-    setCurrentUser(user);
+    const session = store.getState().session;
+
+    if (session?.userEmail && session.userEmail !== user.email) {
+      store.dispatch(clearCart());
+      store.dispatch(clearOrders());
+      store.dispatch(clearSession());
+    }
+
+    const restoredName =
+      session?.userEmail === user.email && session?.displayName
+        ? session.displayName
+        : user.name;
+
+    store.dispatch(setUserEmail(user.email));
+    store.dispatch(setDisplayName(restoredName));
+    setCurrentUser({ ...user, name: restoredName });
     setIsLoggedIn(true);
-    // AccountTab now renders ProfileScreen — no navigation needed
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
-    // Return to AccountTab (which will show AuthScreen)
     navRef.current?.navigate("AccountTab");
   };
 
   const handleUpdate = (updatedUser) => {
+    store.dispatch(setDisplayName(updatedUser.name));
     setCurrentUser(updatedUser);
   };
 

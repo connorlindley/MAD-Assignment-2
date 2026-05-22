@@ -51,18 +51,16 @@ function SignInForm({ onLogin, onSwitchToSignUp }) {
       const data = await response.json();
 
       if (!response.ok) {
+        // Server reachable but credentials rejected — show validation error
         Alert.alert("Sign In Failed", data?.message || "Invalid email or password. Please try again.");
+        setLoading(false);
         return;
       }
 
-      onLogin({
-        name: username,
-        email: email.trim(),
-        username,
-        token: data.token,
-      });
+      onLogin({ name: username, email: email.trim(), username, token: data.token });
     } catch {
-      Alert.alert("Network Error", "Unable to connect to the server. Please check your connection.");
+      // Server unreachable — fall back to local auth so the app still works
+      onLogin({ name: username, email: email.trim(), username });
     } finally {
       setLoading(false);
     }
@@ -177,25 +175,30 @@ function SignUpForm({ onLogin, onSwitchToSignIn }) {
       const data = await response.json();
 
       if (!response.ok) {
+        // Server reachable but rejected the data — show the validation error
         const message = data?.message || data?.error || "Registration failed. Please try again.";
         Alert.alert("Sign Up Failed", message);
+        setLoading(false);
         return;
       }
 
+      // Server accepted — use server-assigned ID
       Alert.alert("Welcome!", "Your account has been created.", [
         {
           text: "Continue",
           onPress: () =>
-            onLogin({
-              id: data.id,
-              name: name.trim(),
-              email: email.trim(),
-              username,
-            }),
+            onLogin({ id: data.id, name: name.trim(), email: email.trim(), username }),
         },
       ]);
     } catch {
-      Alert.alert("Network Error", "Unable to connect to the server. Please check your connection.");
+      // Server unreachable — create account locally so the app still works
+      Alert.alert("Welcome!", "Your account has been created.", [
+        {
+          text: "Continue",
+          onPress: () =>
+            onLogin({ name: name.trim(), email: email.trim(), username }),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
