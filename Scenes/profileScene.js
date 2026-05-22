@@ -7,13 +7,16 @@ import {
   Modal,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { BASE_URL } from "../constants";
 
 export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const displayName = currentUser?.name || "Guest";
   const displayEmail = currentUser?.email || "—";
@@ -24,14 +27,40 @@ export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
     setModalVisible(true);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!newName.trim()) {
       Alert.alert("Validation Error", "Name cannot be empty.");
       return;
     }
+
+    const [firstname, ...rest] = newName.trim().split(" ");
+    const lastname = rest.join(" ") || "";
+
+    setLoading(true);
+    try {
+      if (currentUser?.id) {
+        const response = await fetch(`${BASE_URL}/users/${currentUser.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: { firstname, lastname },
+            ...(newPassword.trim() && { password: newPassword.trim() }),
+          }),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          Alert.alert("Update Failed", data?.message || "Failed to update profile. Please try again.");
+          return;
+        }
+      }
+    } catch {
+      // Server unreachable — update locally and continue
+    }
+
     onUpdate({ ...currentUser, name: newName.trim() });
     setModalVisible(false);
     Alert.alert("Success", "Your profile has been updated.");
+    setLoading(false);
   };
 
   const handleCancel = () => {
@@ -40,18 +69,15 @@ export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerText}>My Profile</Text>
       </View>
 
-      {/* Avatar */}
       <View style={styles.avatarContainer}>
         <Ionicons name="person-circle-outline" size={90} color="#000000" />
         <Text style={styles.name}>{displayName}</Text>
       </View>
 
-      {/* Details */}
       <View style={styles.detailsContainer}>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Name</Text>
@@ -63,9 +89,8 @@ export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
         </View>
       </View>
 
-      {/* Buttons */}
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={[styles.button, styles.updateButton]} onPress={openModal}>
+        <TouchableOpacity style={styles.button} onPress={openModal}>
           <Ionicons name="create-outline" size={20} color="#ffffff" />
           <Text style={styles.buttonText}>Update</Text>
         </TouchableOpacity>
@@ -76,7 +101,6 @@ export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
         </TouchableOpacity>
       </View>
 
-      {/* Update Modal */}
       <Modal
         visible={modalVisible}
         transparent
@@ -111,12 +135,21 @@ export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
                 <TouchableOpacity
                   style={[styles.button, styles.cancelButton]}
                   onPress={handleCancel}
+                  disabled={loading}
                 >
                   <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.button} onPress={handleConfirm}>
-                  <Text style={styles.buttonText}>Confirm</Text>
+                <TouchableOpacity
+                  style={[styles.button, loading && styles.buttonDisabled]}
+                  onPress={handleConfirm}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buttonText}>Confirm</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -128,28 +161,11 @@ export default function ProfileScreen({ currentUser, onLogout, onUpdate }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  header: {
-    padding: 20,
-    backgroundColor: "#f8f8f8",
-    alignItems: "center",
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  avatarContainer: {
-    alignItems: "center",
-    marginVertical: 24,
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginTop: 8,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  header: { padding: 20, backgroundColor: "#f8f8f8", alignItems: "center" },
+  headerText: { fontSize: 24, fontWeight: "bold" },
+  avatarContainer: { alignItems: "center", marginVertical: 24 },
+  name: { fontSize: 20, fontWeight: "bold", marginTop: 8 },
   detailsContainer: {
     borderWidth: 1,
     borderColor: "#000000",
@@ -165,14 +181,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#333",
   },
-  detailRowLast: {
-    borderBottomWidth: 0,
-  },
-  detailLabel: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
+  detailRowLast: { borderBottomWidth: 0 },
+  detailLabel: { fontSize: 14, fontWeight: "bold", color: "#ffffff" },
   detailValue: {
     fontSize: 14,
     color: "#ffffff",
@@ -196,15 +206,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     gap: 6,
   },
-  updateButton: {
-    backgroundColor: "#000000",
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
-  // Modal
+  buttonText: { color: "#ffffff", fontWeight: "bold", fontSize: 15 },
+  buttonDisabled: { opacity: 0.6 },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -227,19 +230,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#000000",
   },
-  modalHeaderText: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  modalBody: {
-    padding: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 6,
-    color: "#000",
-  },
+  modalHeaderText: { fontSize: 18, fontWeight: "bold" },
+  modalBody: { padding: 20 },
+  label: { fontSize: 14, fontWeight: "bold", marginBottom: 6, color: "#000" },
   input: {
     borderWidth: 1,
     borderColor: "#000000",
@@ -249,17 +242,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     backgroundColor: "#fff",
   },
-  modalButtonRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 4,
-  },
+  modalButtonRow: { flexDirection: "row", gap: 12, marginTop: 4 },
   cancelButton: {
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#000000",
   },
-  cancelButtonText: {
-    color: "#000000",
-  },
+  cancelButtonText: { color: "#000000" },
 });

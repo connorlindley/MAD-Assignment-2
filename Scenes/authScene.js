@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { BASE_URL } from "../constants";
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -18,13 +19,14 @@ const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 function SignInForm({ onLogin, onSwitchToSignUp }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleClear = () => {
     setEmail("");
     setPassword("");
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (!email.trim()) {
       Alert.alert("Error", "Please enter your email.");
       return;
@@ -37,7 +39,33 @@ function SignInForm({ onLogin, onSwitchToSignUp }) {
       Alert.alert("Error", "Please enter your password.");
       return;
     }
-    onLogin({ name: email.trim().split("@")[0], email: email.trim() }, "signin");
+
+    const username = email.trim().split("@")[0];
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password: password.trim() }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        Alert.alert("Sign In Failed", data?.message || "Invalid email or password. Please try again.");
+        return;
+      }
+
+      onLogin({
+        name: username,
+        email: email.trim(),
+        username,
+        token: data.token,
+      });
+    } catch {
+      Alert.alert("Network Error", "Unable to connect to the server. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -70,12 +98,21 @@ function SignInForm({ onLogin, onSwitchToSignUp }) {
           <TouchableOpacity
             style={[styles.button, styles.clearButton]}
             onPress={handleClear}
+            disabled={loading}
           >
             <Text style={[styles.buttonText, styles.clearButtonText]}>Clear</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-            <Text style={styles.buttonText}>Sign In</Text>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignIn}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -121,16 +158,47 @@ function SignUpForm({ onLogin, onSwitchToSignIn }) {
       return;
     }
 
-    setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setLoading(false);
+    const [firstname, ...rest] = name.trim().split(" ");
+    const lastname = rest.join(" ") || "";
+    const username = email.trim().split("@")[0];
 
-    Alert.alert("Welcome!", "Your account has been created.", [
-      {
-        text: "Continue",
-        onPress: () => onLogin({ name: name.trim(), email: email.trim() }, "signup"),
-      },
-    ]);
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          username,
+          password: password.trim(),
+          name: { firstname, lastname },
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        const message = data?.message || data?.error || "Registration failed. Please try again.";
+        Alert.alert("Sign Up Failed", message);
+        return;
+      }
+
+      Alert.alert("Welcome!", "Your account has been created.", [
+        {
+          text: "Continue",
+          onPress: () =>
+            onLogin({
+              id: data.id,
+              name: name.trim(),
+              email: email.trim(),
+              username,
+            }),
+        },
+      ]);
+    } catch {
+      Alert.alert("Network Error", "Unable to connect to the server. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -218,15 +286,9 @@ export default function AuthScreen({ onLogin }) {
         </View>
 
         {mode === "signin" ? (
-          <SignInForm
-            onLogin={onLogin}
-            onSwitchToSignUp={() => setMode("signup")}
-          />
+          <SignInForm onLogin={onLogin} onSwitchToSignUp={() => setMode("signup")} />
         ) : (
-          <SignUpForm
-            onLogin={onLogin}
-            onSwitchToSignIn={() => setMode("signin")}
-          />
+          <SignUpForm onLogin={onLogin} onSwitchToSignIn={() => setMode("signin")} />
         )}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -271,8 +333,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
+    textAlign: "center",
   },
   fields: {
     padding: 20,

@@ -24,16 +24,40 @@ function OrderCard({ order }) {
 
   const handleStatusUpdate = async (newStatus) => {
     setLoading(true);
-    // Simulate API call to update order on server
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      // Call server to update cart/order status
+      if (order.serverId) {
+        const response = await fetch(`${BASE_URL}/carts/${order.serverId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: 1,
+            date: new Date().toISOString().split("T")[0],
+            products: order.items.map((i) => ({
+              productId: i.id,
+              quantity: i.quantity,
+            })),
+            status: newStatus,
+          }),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          Alert.alert("Error", data?.message || "Failed to update order. Please try again.");
+          return;
+        }
+      }
+    } catch {
+      // Server unreachable — update locally and continue
+    }
+
     dispatch(updateOrderStatus({ id: order.id, status: newStatus }));
-    setLoading(false);
     Alert.alert(
       "Order Updated",
       newStatus === "paid"
         ? "Payment confirmed! Your order is being prepared."
         : "Order received! Thank you for your purchase."
     );
+    setLoading(false);
   };
 
   return (
@@ -47,8 +71,7 @@ function OrderCard({ order }) {
           <Text style={styles.orderId}>{order.id}</Text>
           <Text style={styles.orderSub}>
             {order.totalQuantity} item{order.totalQuantity !== 1 ? "s" : ""}
-            {"  ·  "}
-            ${order.totalCost.toFixed(2)}
+            {"  ·  "}${order.totalCost.toFixed(2)}
           </Text>
         </View>
         <Ionicons
@@ -76,7 +99,6 @@ function OrderCard({ order }) {
             </View>
           ))}
 
-          {/* Pay button — shown for new orders */}
           {order.status === "new" && (
             <View style={styles.actionRow}>
               <TouchableOpacity
@@ -93,7 +115,6 @@ function OrderCard({ order }) {
             </View>
           )}
 
-          {/* Receive button — shown for paid orders */}
           {order.status === "paid" && (
             <View style={styles.actionRow}>
               <TouchableOpacity
@@ -164,31 +185,12 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  header: {
-    padding: 20,
-    backgroundColor: "#f8f8f8",
-    alignItems: "center",
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 18,
-    color: "#888",
-  },
-  listContent: {
-    padding: 12,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  header: { padding: 20, backgroundColor: "#f8f8f8", alignItems: "center" },
+  headerText: { fontSize: 24, fontWeight: "bold" },
+  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyText: { fontSize: 18, color: "#888" },
+  listContent: { padding: 12 },
   sectionHeader: {
     backgroundColor: "#000000",
     borderRadius: 8,
@@ -197,11 +199,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 4,
   },
-  sectionHeaderText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
+  sectionHeaderText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
   card: {
     borderWidth: 1,
     borderColor: "#000000",
@@ -215,18 +213,9 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: "#fff",
   },
-  cardMeta: {
-    flex: 1,
-  },
-  orderId: {
-    fontWeight: "bold",
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  orderSub: {
-    fontSize: 13,
-    color: "#555",
-  },
+  cardMeta: { flex: 1 },
+  orderId: { fontWeight: "bold", fontSize: 15, marginBottom: 2 },
+  orderSub: { fontSize: 13, color: "#555" },
   itemRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -235,24 +224,10 @@ const styles = StyleSheet.create({
     borderTopColor: "#eee",
     backgroundColor: "#fafafa",
   },
-  itemImage: {
-    width: 55,
-    height: 55,
-    resizeMode: "contain",
-    marginRight: 12,
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: 13,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  itemQty: {
-    fontSize: 13,
-    color: "#555",
-  },
+  itemImage: { width: 55, height: 55, resizeMode: "contain", marginRight: 12 },
+  itemInfo: { flex: 1 },
+  itemTitle: { fontSize: 13, fontWeight: "bold", marginBottom: 4 },
+  itemQty: { fontSize: 13, color: "#555" },
   actionRow: {
     padding: 10,
     borderTopWidth: 1,
@@ -265,12 +240,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: "center",
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  actionButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
+  buttonDisabled: { opacity: 0.6 },
+  actionButtonText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 });

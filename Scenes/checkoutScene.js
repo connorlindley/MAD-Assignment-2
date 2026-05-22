@@ -28,10 +28,34 @@ export default function CheckoutScene() {
         { text: "Cancel", style: "cancel" },
         {
           text: "Check Out",
-          onPress: () => {
+          onPress: async () => {
+            const localId = `ORD-${Date.now().toString().slice(-6)}`;
+            let serverId = null;
+
+            // POST cart to server; store the server-assigned ID for Pay/Receive calls
+            try {
+              const response = await fetch(`${BASE_URL}/carts`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userId: 1,
+                  date: new Date().toISOString().split("T")[0],
+                  products: items.map((i) => ({
+                    productId: i.id,
+                    quantity: i.quantity,
+                  })),
+                }),
+              });
+              const data = await response.json();
+              if (response.ok) serverId = data.id ?? null;
+            } catch {
+              // Server unreachable — proceed locally
+            }
+
             dispatch(
               addOrder({
-                id: `ORD-${Date.now().toString().slice(-6)}`,
+                id: localId,
+                serverId,
                 items: items.map((i) => ({ ...i })),
                 totalQuantity,
                 totalCost,
@@ -57,7 +81,6 @@ export default function CheckoutScene() {
 
   return (
     <View style={styles.container}>
-      {/* Summary */}
       <View style={styles.summary}>
         <Text style={styles.summaryText}>Items: {totalQuantity}</Text>
         <Text style={styles.summaryText}>Total: ${totalCost.toFixed(2)}</Text>
@@ -98,7 +121,6 @@ export default function CheckoutScene() {
         )}
       />
 
-      {/* Check Out */}
       <View style={styles.checkoutContainer}>
         <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
           <Text style={styles.checkoutButtonText}>Check Out</Text>
@@ -109,19 +131,9 @@ export default function CheckoutScene() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 18,
-    color: "#888",
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyText: { fontSize: 18, color: "#888" },
   summary: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -130,15 +142,8 @@ const styles = StyleSheet.create({
     margin: 10,
     borderRadius: 10,
   },
-  summaryText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  list: {
-    paddingHorizontal: 10,
-    paddingBottom: 10,
-  },
+  summaryText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  list: { paddingHorizontal: 10, paddingBottom: 10 },
   card: {
     flexDirection: "row",
     padding: 10,
@@ -150,29 +155,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     elevation: 2,
   },
-  image: {
-    width: 70,
-    height: 70,
-    resizeMode: "contain",
-  },
-  info: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  price: {
-    fontSize: 14,
-    color: "green",
-    fontWeight: "bold",
-  },
-  quantityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  image: { width: 70, height: 70, resizeMode: "contain" },
+  info: { flex: 1, paddingHorizontal: 10 },
+  title: { fontSize: 13, fontWeight: "bold", marginBottom: 5 },
+  price: { fontSize: 14, color: "green", fontWeight: "bold" },
+  quantityContainer: { flexDirection: "row", alignItems: "center" },
   qtyButton: {
     backgroundColor: "#000",
     width: 30,
@@ -181,12 +168,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 15,
   },
-  qtyButtonText: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
-    lineHeight: 22,
-  },
+  qtyButtonText: { color: "#fff", fontSize: 20, fontWeight: "bold", lineHeight: 22 },
   quantity: {
     marginHorizontal: 10,
     fontSize: 16,
@@ -205,9 +187,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  checkoutButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  checkoutButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });

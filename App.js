@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Alert } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -31,7 +31,9 @@ function HomeStack() {
   );
 }
 
-function AppTabs({ currentUser, onLogout, onUpdate, initialTab }) {
+// Always-visible tab navigator — AccountTab switches between Auth and Profile
+// based on login state; the other three tabs are guarded with an alert.
+function MainNavigator({ isLoggedIn, currentUser, onLogin, onLogout, onUpdate, navRef }) {
   const totalQuantity = useSelector((state) =>
     state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
   );
@@ -39,86 +41,111 @@ function AppTabs({ currentUser, onLogout, onUpdate, initialTab }) {
     state.orders.orders.filter((o) => o.status === "new").length
   );
 
+  const requireAuth = (tabName) => ({
+    tabPress: (e) => {
+      if (!isLoggedIn) {
+        e.preventDefault();
+        Alert.alert(
+          "Login Required",
+          `Please sign in to access ${tabName}.`,
+          [{ text: "OK" }]
+        );
+      }
+    },
+  });
+
   return (
-    <Tab.Navigator initialRouteName={initialTab}>
-      <Tab.Screen
-        name="ProductsTab"
-        component={HomeStack}
-        options={{
-          headerShown: false,
-          title: "Products",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ShoppingCart"
-        component={CheckoutScreen}
-        options={{
-          title: "My Cart",
-          tabBarBadge: totalQuantity > 0 ? totalQuantity : undefined,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cart-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="MyOrders"
-        component={OrdersScreen}
-        options={{
-          title: "My Orders",
-          tabBarBadge: newOrderCount > 0 ? newOrderCount : undefined,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="receipt-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ProfileTab"
-        options={{
-          title: "My Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
-        }}
-      >
-        {() => (
-          <ProfileScreen
-            currentUser={currentUser}
-            onLogout={onLogout}
-            onUpdate={onUpdate}
-          />
-        )}
-      </Tab.Screen>
-    </Tab.Navigator>
+    <NavigationContainer ref={navRef}>
+      <Tab.Navigator>
+        {/* Account tab — Auth when logged out, Profile when logged in */}
+        <Tab.Screen
+          name="AccountTab"
+          options={{
+            title: isLoggedIn ? "My Profile" : "Account",
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person-outline" size={size} color={color} />
+            ),
+          }}
+        >
+          {() =>
+            isLoggedIn ? (
+              <ProfileScreen
+                currentUser={currentUser}
+                onLogout={onLogout}
+                onUpdate={onUpdate}
+              />
+            ) : (
+              <AuthScreen onLogin={onLogin} />
+            )
+          }
+        </Tab.Screen>
+
+        <Tab.Screen
+          name="ProductsTab"
+          component={HomeStack}
+          listeners={requireAuth("Products")}
+          options={{
+            headerShown: false,
+            title: "Products",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home-outline" size={size} color={color} />
+            ),
+          }}
+        />
+
+        <Tab.Screen
+          name="ShoppingCart"
+          component={CheckoutScreen}
+          listeners={requireAuth("My Cart")}
+          options={{
+            title: "My Cart",
+            tabBarBadge: isLoggedIn && totalQuantity > 0 ? totalQuantity : undefined,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="cart-outline" size={size} color={color} />
+            ),
+          }}
+        />
+
+        <Tab.Screen
+          name="MyOrders"
+          component={OrdersScreen}
+          listeners={requireAuth("My Orders")}
+          options={{
+            title: "My Orders",
+            tabBarBadge: isLoggedIn && newOrderCount > 0 ? newOrderCount : undefined,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="receipt-outline" size={size} color={color} />
+            ),
+          }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
 
-// Inner component so hooks can access the Redux store via Provider above
 function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [initialTab, setInitialTab] = useState("ProductsTab");
+  const navRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3000);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleLogin = (user, loginType) => {
+  const handleLogin = (user) => {
     setCurrentUser(user);
     setIsLoggedIn(true);
-    setInitialTab(loginType === "signup" ? "ProfileTab" : "ProductsTab");
+    // AccountTab now renders ProfileScreen — no navigation needed
   };
 
   const handleLogout = () => {
-    // isLoggedIn resets to false — tabs unmount, all badges disappear instantly.
-    // Cart and orders remain in AsyncStorage so they restore on next sign-in.
     setIsLoggedIn(false);
     setCurrentUser(null);
-    setInitialTab("ProductsTab");
+    // Return to AccountTab (which will show AuthScreen)
+    navRef.current?.navigate("AccountTab");
   };
 
   const handleUpdate = (updatedUser) => {
@@ -129,25 +156,20 @@ function AppContent() {
     return <SplashScreen />;
   }
 
-  if (!isLoggedIn) {
-    return <AuthScreen onLogin={handleLogin} />;
-  }
-
   return (
-    <NavigationContainer>
-      <AppTabs
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        onUpdate={handleUpdate}
-        initialTab={initialTab}
-      />
-    </NavigationContainer>
+    <MainNavigator
+      isLoggedIn={isLoggedIn}
+      currentUser={currentUser}
+      onLogin={handleLogin}
+      onLogout={handleLogout}
+      onUpdate={handleUpdate}
+      navRef={navRef}
+    />
   );
 }
 
-// Provider and PersistGate sit at the very top so AsyncStorage rehydration
-// completes before the user ever reaches sign-in — data is ready immediately
-// after login without a second wait.
+// Provider and PersistGate wrap everything so AsyncStorage rehydrates
+// during the splash screen — data is ready the moment the user signs in.
 export default function App() {
   return (
     <Provider store={store}>
