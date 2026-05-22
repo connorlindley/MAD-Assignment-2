@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Alert } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -13,6 +14,8 @@ import ProductListingScreen from "./Scenes/productListingScene";
 import ProductDetailsScreen from "./Scenes/productDetailsScene";
 import CheckoutScreen from "./Scenes/checkoutScene";
 import SplashScreen from "./Scenes/splashScene";
+import AuthScreen from "./Scenes/authScene";
+import ProfileScreen from "./Scenes/profileScene";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -27,17 +30,30 @@ function HomeStack() {
   );
 }
 
-function AppTabs() {
-  // Derive total item count from Redux to drive the live cart badge
+function AppTabs({ isLoggedIn, currentUser, onLogout, initialTab }) {
   const totalQuantity = useSelector((state) =>
     state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
   );
 
+  const guardedListener = (tabName) => ({
+    tabPress: (e) => {
+      if (!isLoggedIn) {
+        e.preventDefault();
+        Alert.alert(
+          "Login Required",
+          `Please sign in to access ${tabName}.`,
+          [{ text: "OK" }]
+        );
+      }
+    },
+  });
+
   return (
-    <Tab.Navigator>
+    <Tab.Navigator initialRouteName={initialTab}>
       <Tab.Screen
         name="ProductsTab"
         component={HomeStack}
+        listeners={guardedListener("Products")}
         options={{
           headerShown: false,
           title: "Products",
@@ -49,29 +65,59 @@ function AppTabs() {
       <Tab.Screen
         name="ShoppingCart"
         component={CheckoutScreen}
+        listeners={guardedListener("My Cart")}
         options={{
-          title: "Shopping Cart",
-          // Hide badge when cart is empty — undefined removes it completely
+          title: "My Cart",
           tabBarBadge: totalQuantity > 0 ? totalQuantity : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color} />
           ),
         }}
       />
+      <Tab.Screen
+        name="ProfileTab"
+        options={{
+          title: "My Profile",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      >
+        {() => <ProfileScreen currentUser={currentUser} onLogout={onLogout} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [initialTab, setInitialTab] = useState("ProductsTab");
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3000);
     return () => clearTimeout(timer);
   }, []);
 
+  const handleLogin = (user, loginType) => {
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    setInitialTab(loginType === "signup" ? "ProfileTab" : "ProductsTab");
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    setInitialTab("ProductsTab");
+  };
+
   if (showSplash) {
     return <SplashScreen />;
+  }
+
+  if (!isLoggedIn) {
+    return <AuthScreen onLogin={handleLogin} />;
   }
 
   return (
@@ -79,7 +125,12 @@ export default function App() {
       <PersistGate loading={null} persistor={persistor}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <NavigationContainer>
-            <AppTabs />
+            <AppTabs
+              isLoggedIn={isLoggedIn}
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              initialTab={initialTab}
+            />
           </NavigationContainer>
         </GestureHandlerRootView>
       </PersistGate>
