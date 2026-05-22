@@ -31,7 +31,7 @@ function HomeStack() {
   );
 }
 
-function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
+function AppTabs({ currentUser, onLogout, onUpdate, initialTab }) {
   const totalQuantity = useSelector((state) =>
     state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
   );
@@ -39,25 +39,11 @@ function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
     state.orders.orders.filter((o) => o.status === "new").length
   );
 
-  const guardedListener = (tabName) => ({
-    tabPress: (e) => {
-      if (!isLoggedIn) {
-        e.preventDefault();
-        Alert.alert(
-          "Login Required",
-          `Please sign in to access ${tabName}.`,
-          [{ text: "OK" }]
-        );
-      }
-    },
-  });
-
   return (
     <Tab.Navigator initialRouteName={initialTab}>
       <Tab.Screen
         name="ProductsTab"
         component={HomeStack}
-        listeners={guardedListener("Products")}
         options={{
           headerShown: false,
           title: "Products",
@@ -69,7 +55,6 @@ function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
       <Tab.Screen
         name="ShoppingCart"
         component={CheckoutScreen}
-        listeners={guardedListener("My Cart")}
         options={{
           title: "My Cart",
           tabBarBadge: totalQuantity > 0 ? totalQuantity : undefined,
@@ -81,7 +66,6 @@ function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
       <Tab.Screen
         name="MyOrders"
         component={OrdersScreen}
-        listeners={guardedListener("My Orders")}
         options={{
           title: "My Orders",
           tabBarBadge: newOrderCount > 0 ? newOrderCount : undefined,
@@ -111,7 +95,8 @@ function AppTabs({ isLoggedIn, currentUser, onLogout, onUpdate, initialTab }) {
   );
 }
 
-export default function App() {
+// Inner component so hooks can access the Redux store via Provider above
+function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -129,6 +114,8 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    // isLoggedIn resets to false — tabs unmount, all badges disappear instantly.
+    // Cart and orders remain in AsyncStorage so they restore on next sign-in.
     setIsLoggedIn(false);
     setCurrentUser(null);
     setInitialTab("ProductsTab");
@@ -147,18 +134,26 @@ export default function App() {
   }
 
   return (
+    <NavigationContainer>
+      <AppTabs
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onUpdate={handleUpdate}
+        initialTab={initialTab}
+      />
+    </NavigationContainer>
+  );
+}
+
+// Provider and PersistGate sit at the very top so AsyncStorage rehydration
+// completes before the user ever reaches sign-in — data is ready immediately
+// after login without a second wait.
+export default function App() {
+  return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <NavigationContainer>
-            <AppTabs
-              isLoggedIn={isLoggedIn}
-              currentUser={currentUser}
-              onLogout={handleLogout}
-              onUpdate={handleUpdate}
-              initialTab={initialTab}
-            />
-          </NavigationContainer>
+          <AppContent />
         </GestureHandlerRootView>
       </PersistGate>
     </Provider>

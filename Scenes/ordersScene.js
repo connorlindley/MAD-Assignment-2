@@ -6,9 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { updateOrderStatus } from "../store/ordersSlice";
 import { BASE_URL } from "../constants";
 
 const STATUS_SECTIONS = ["new", "paid", "delivered"];
@@ -16,11 +19,30 @@ const STATUS_LABELS = { new: "New Orders", paid: "Paid", delivered: "Delivered" 
 
 function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+
+  const handleStatusUpdate = async (newStatus) => {
+    setLoading(true);
+    // Simulate API call to update order on server
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    dispatch(updateOrderStatus({ id: order.id, status: newStatus }));
+    setLoading(false);
+    Alert.alert(
+      "Order Updated",
+      newStatus === "paid"
+        ? "Payment confirmed! Your order is being prepared."
+        : "Order received! Thank you for your purchase."
+    );
+  };
 
   return (
     <View style={styles.card}>
-      {/* Compact summary row */}
-      <TouchableOpacity style={styles.cardHeader} onPress={() => setExpanded((v) => !v)}>
+      {/* Compact summary row — tap to expand */}
+      <TouchableOpacity
+        style={styles.cardHeader}
+        onPress={() => setExpanded((v) => !v)}
+      >
         <View style={styles.cardMeta}>
           <Text style={styles.orderId}>{order.id}</Text>
           <Text style={styles.orderSub}>
@@ -36,22 +58,59 @@ function OrderCard({ order }) {
         />
       </TouchableOpacity>
 
-      {/* Expanded product list */}
-      {expanded &&
-        order.items.map((item) => (
-          <View key={item.id} style={styles.itemRow}>
-            <Image
-              source={{ uri: BASE_URL + item.image }}
-              style={styles.itemImage}
-            />
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemTitle} numberOfLines={2}>
-                {item.title}
-              </Text>
-              <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
+      {/* Expanded detail */}
+      {expanded && (
+        <>
+          {order.items.map((item) => (
+            <View key={item.id} style={styles.itemRow}>
+              <Image
+                source={{ uri: BASE_URL + item.image }}
+                style={styles.itemImage}
+              />
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemTitle} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
+
+          {/* Pay button — shown for new orders */}
+          {order.status === "new" && (
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionButton, loading && styles.buttonDisabled]}
+                onPress={() => handleStatusUpdate("paid")}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.actionButtonText}>Pay</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Receive button — shown for paid orders */}
+          {order.status === "paid" && (
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionButton, loading && styles.buttonDisabled]}
+                onPress={() => handleStatusUpdate("delivered")}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.actionButtonText}>Receive</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
+      )}
     </View>
   );
 }
@@ -193,5 +252,25 @@ const styles = StyleSheet.create({
   itemQty: {
     fontSize: 13,
     color: "#555",
+  },
+  actionRow: {
+    padding: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    backgroundColor: "#fafafa",
+  },
+  actionButton: {
+    backgroundColor: "#000000",
+    padding: 12,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  actionButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 15,
   },
 });
